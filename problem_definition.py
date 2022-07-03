@@ -111,7 +111,7 @@ class ProblemDefinition:
                     self.enable_customer_point(customer=customer, point=self.points[closer_index])
         self.deactivate_point(index=random_point.index)
 
-    def connect_random_customers_to_closer_active_demand_point(self, size: int = 5):
+    def connect_random_customers_to_closer_active_access_point(self, size: int = 5):
         random_customers: List[Customer] = list(numpy.random.choice(self.customers, size=size))
         for customer in random_customers:
             index_max = get_arg_max(self.solution[customer.index])

@@ -102,7 +102,7 @@ class PonderedSumProblem(ProblemDefinition):
             return self
 
     def shake_k1(self):
-        self.connect_random_customers_to_closer_active_demand_point()
+        self.connect_random_customers_to_closer_active_access_point()
 
     def shake_k2(self):
         self.deactivate_less_demanded_access_point()

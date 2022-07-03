@@ -12,6 +12,15 @@ class Coordinate:
     def get_distance(self, point: 'Coordinate'):
         return CoordinatesCalculator.get_distance(self, point)
 
+    def get_closer_point(self, points: Collection['Coordinate'], distances: List[float] = None) -> 'Coordinate':
+        points = list(points)
+        if not distances:
+            distances = [self.get_distance(p) for p in points]
+        if len(points) != len(distances):
+            distances = [self.get_distance(p) for p in points]
+        index_min = get_arg_min(distances)
+        return points[index_min]
+
     def __repr__(self):
         return f'Coordinate(x={self.x}, y={self.y})'
 
@@ -54,14 +63,8 @@ class Customer:
         self.coordinates = coordinates
         self.index = index
 
-    def get_closer_point(self, points: Collection[AccessPoint], distances: List[float] = None) -> AccessPoint:
-        points = list(points)
-        if not distances:
-            distances = [self.coordinates.get_distance(p) for p in points]
-        if len(points) != len(distances):
-            distances = [self.coordinates.get_distance(p) for p in points]
-        index_min = get_arg_min(distances)
-        return points[index_min]
+    def get_closer_point(self, points: Collection['Coordinate'], distances: List[float] = None) -> 'Coordinate':
+        return self.coordinates.get_closer_point(points=points, distances=distances)
 
 
 class CoordinatesCalculator:

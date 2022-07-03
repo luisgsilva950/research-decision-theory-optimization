@@ -1,6 +1,10 @@
 from typing import List
+
+from sklearn.cluster import KMeans
+
 from models import Customer, AccessPoint, Coordinate
 from problem_definition import ProblemDefinition
+from rvns import Rvns
 from utils import get_points_distances_from_file, get_arg_min
 
 
@@ -98,15 +102,15 @@ class ProblemDefinitionF2(ProblemDefinition):
             return self
 
     def shake_k1(self):
-        self.connect_random_customers_to_closer_active_demand_point()
+        self.connect_random_customers_to_closer_active_access_point()
 
     def shake_k2(self):
         self.deactivate_random_customers()
         self.enable_random_customers()
 
     def shake_k3(self):
-        self.deactivate_random_demand_point_and_connect_closer_point()
-        self.deactivate_random_demand_point_and_connect_closer_point()
+        self.deactivate_less_demanded_access_point()
+        self.enable_random_customers(size=1)
 
     def shake(self):
         y = ProblemDefinitionF2(customers=self.customers.copy(), points=self.points.copy(),
@@ -126,24 +130,36 @@ class ProblemDefinitionF2(ProblemDefinition):
         return y
 
     def get_initial_solution(self) -> 'ProblemDefinitionF2':
-        all_points = self.get_points_with_space_100()
+        # all_points = self.get_points_with_space_100()
         self.active_points = set()
         self.solution = []
+        kmeans_kwargs = {"init": "random"}
+        scaled_features = [[c.coordinates.x, c.coordinates.y] for c in self.customers]
+        kmeans = KMeans(n_clusters=self.max_active_points, **kmeans_kwargs)
+        kmeans.fit(scaled_features)
+        clusters_centers = list([list(c) for c in kmeans.cluster_centers_])
+        clusters_points: List[AccessPoint] = [Coordinate(x=c[0], y=c[1]).get_closer_point(points=self.points) for c in
+                                              clusters_centers]
         for customer in self.customers:
             customer_bool_solutions = []
-            distances = [self.customer_to_point_distances[customer.index][p.index] for p in all_points]
+            distances = [self.customer_to_point_distances[customer.index][p.index] for p in clusters_points]
             index = get_arg_min(distances)
-            closer_point = all_points[index]
-            if distances[index] > self.max_distance and len(self.active_points) < self.max_active_points:
-                closer_point = customer.get_closer_point(points=self.points,
-                                                         distances=self.customer_to_point_distances[customer.index])
-            if closer_point.index not in [p.index for p in self.active_points]:
+            closer_point = clusters_points[index]
+            if distances[index] >= self.max_distance or len(self.active_points) >= self.max_active_points:
+                closer_point = None
+            if closer_point and closer_point.index not in [p.index for p in self.active_points]:
                 self.active_points.add(closer_point)
             for point_index, point in enumerate(self.points):
-                customer_bool_solutions.append(point_index == closer_point.index)
+                customer_bool_solutions.append(bool(closer_point and point_index == closer_point.index))
             self.solution.append(customer_bool_solutions)
         self.update_active_points()
         self.objective_function()
         print(f"\033[3;92mTotal active points on initial solution: {len(self.active_points)}, "
               f"initial penal: {self.penal}")
         return self
+
+
+if __name__ == '__main__':
+    problem_f2 = ProblemDefinitionF2.from_csv()
+    rvns_f2 = Rvns(problem=problem_f2, max_solutions_evaluations=200, n=1)
+    rvns_f2.run()
